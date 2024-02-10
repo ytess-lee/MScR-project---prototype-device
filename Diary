@@ -1,0 +1,208 @@
+# FUNCTIONS
+Must-have functions:
+1. Speed/ flow rate
+    - optional: lower the speed if image is blurry for 3s; increase speed when same object is captured in three  consecutive images 
+2. Recording duration + button/ cmd
+3. Profiles with set speed and duration
+4. Ability to pause the process 
+5. Live camera (optional)
+
+The original poseidon software is configured to run the stepper motors with 200 steps per revolution at 1/32 microstepping, which translates to 6400 steps per rotation.
+
+
+# 20231106
+################
+# Image + video capture - save video in path and capturing one image/ second
+- Modify the camera function from poseidon into script that does not involve gui
+- it worked and captured images from camera at 1s interval, will need to capture video as well??
+- don't think will need to change the rate of photo taking atm, could instead use a slower flow rate and change the image capturing rate there
+- alex wrote the script already guess i'll just put this in the treasure box instead
+
+# Controller 
+- include serial initialisation into the script
+- figure out what the F, 0.0, 0.0, 0.0 means, something related to mode of action that i made note somewhere but forogt
+- whether there's a way to simulate the script??
+
+
+
+# 20231112
+# Controller
+- create new script with mockcontroller to test the controller script
+- change duration in sec to duration in min (* 60 to make it into sec)
+- allow user to enter speed and duration in terminal 
+- next step: 
+    - add function to allow pausing the pump AND change the speed
+    - add conditional statement if pump is stopped during the process (F2) then execute stop function follow up by    closing the serial connection
+        - 20231113: could be done by adding new line of self.ser.close() followed by print statement
+    - (optional) could add if-else to speed up/ slow down pump control in the AI dx program
+
+
+# 20231113
+# Controller
+- change input for speed from int to float so user could input speed like 12.5
+- just realised that the set_speed function might not be used
+    - wait no nvm it's ran from the run_exp function
+
+# 20231119
+# Controller
+- will need to figure out with alex if I'll need to write code on teaching the device what microstepping/ jogging is. ie what does 12 ul/ min translate into steps etc
+
+# 20231121
+- yup will need to add scripts for microstepping/ displacement/ steps2mm, mm2steps, ul2steps, ul2mm3 conversion that kind of stuffs to tell the pump what to do 
+
+# 20231124
+- add functions:
+    - for steps-mm-ul conversion
+    - add thread cmd to RUN/ START function but haven't tested it out yet
+    - modified start_pump and stop_pump function
+    - add new function 'send_single_command' for stop_pump function to commumicate with Arduino
+    - add start/end/midMarker to class as class attributes
+- BAUDRATE in ardiuno is 230400
+
+
+# 20231125
+- modified the pause function:
+    - add loop in change_speed conditional statement, user will not get out of the loop if they enter value other than 1 or 2
+    - specify the cmd --> pause_cmd and resume_cmd, 
+    - change the thread args from [test_data,] to [pause_command, resume_command],
+- removed send_speed2arduino method, instead calling the sendToArduino method inside set_p1_speed func
+- will need to work on the communication with the board
+
+# 20231126
+- Port:
+    - add method to populate port
+    - add method to dynamically detect available port if no port is provided in cmd line
+- add thread lock to prevent race condition in send_single_command method
+- removed redundant methods
+- looks okay for now will need to pair up with the prototype
+- also need to work on C++ for the arduino board coding
+
+# 20231128
+- 1st test:
+    - error: thread.finished, need to rewrite
+        - def thread_finished
+    - no pump detected but didn't help much changing to other controllers(XYZ)
+    - how do i know which pump is connected or if the pump isn't functioning
+    - START cmd
+        - no pump detected
+    - STOP cmd: 
+        - exception in thread thread-11 send_single_command
+            - self.sendToArduino --> add lines to check if it's == None
+                - self.serial.write((sendStr +....).encode())
+                    - 'NoneType' object cannot be interpreted as an integar -> try adding str(sendStr) didn't help will give OSerror
+            - while self.serial.inWaitig() ==0
+                - OSError: [Errno 9] Bad file descriptor
+                    - might be an issue with the serial communication --> change self.port -> self.serial.port in connect method -> NOPE 
+        - main issue with sendtoarduino method will need to look it up 
+    - RESUME/ PAUSE cmd:
+        - the change_speed statement is working
+
+# 20231129
+- need to look into threading
+- use pyserial maybe??
+- it seems like the cmd is sent from the rasp pi to the board but board won't reply
+- check if board is connected
+- check sendtoarduino and recv method
+
+
+# 20231130
+- sorted out the port connection issue
+- data can be sent and received with RUN command 
+- will run into bad file descriptor when stop command is implemented, even though script has made sure that the serial port is opened
+- also somehow the hotkeys are just not responding :)
+
+# 20231204
+- installed icecream
+- change method in stop cmd from runTest to sendsinglecommand and somehow it worked
+- add inquirer method to replace keyboard function
+    - stop command is semi working, if STOP command is prompted it will execute stop_pump() but will need to wait until the timer's up to start typing in the terminal again, even though the serial connection is closed
+- might need t check the timer in the script
+- can try replacing the change_speed prompt from entering number to inquirer
+    - will run into bugs, not sure why it's either:
+        - sent start command and the mode prompt won't show up
+- start/pause/stop seems working
+- set up two .py in rasp pi
+    - main -> to test new add function (beta)
+        - pause cmd failed to send str to the board (empty str)
+    - prev main -> the script that 100% works
+
+# 20231205
+- couldn't get the motor moving on rasp pi, even with the original poseidon code
+- beta test: 
+    - add loop to allow user PAUSE unless STOP command has been sent
+    - better pause_resume flow
+    - trying to add tqdm to run_exp -> can only show in terminal not IDE, swapped out with timer countdown but doesn't seem to be working
+
+# 20231206
+- ordered new UNO board (amazon) and stepper motor (RS)
+
+# 20231211
+- board and motor arrived and assembled
+- updated arduino to latest
+- made noise when connecting the motor to the board but it didn't vibrate like the previous one
+- heat sink actually works
+- the main.py wouldn't work properly, will run into random bugs/ loops
+
+
+# 20231213
+in Arduino example (constant speed profile):
+- got 2 pumps working in clockwise dir
+in Poseidon:
+- got 2 pumps working but if attached to the CNC as instructed will turn anticlockwise (and sometimes clockwise)
+- will have delay in starting and hence stopping of the motor 
+in main.py
+- script itself is working but the motors don't turn at all
+- might need to tweak with the arduino script
+- also when pressing stop command it doesn't stop the timer, will counter until 1 min before closing the serial communication AGAIN
+- just realised that will need to do the maths a bit differently, time * convert_displacement
+- beta_teson/ beta:
+    - changed from inwaiting to 
+
+# 20231214
+IT WORKED
+- has to set the speed to 888888888 but it doesn't turn that fast
+- stall once in a while
+- doesn't stop
+CHECKED
+- check with the arduino's Accelstepper example
+- check with my script
+- check with poseidon
+
+# 20231219
+- fixed motor overheating by setting the current limiting screw on all three controllers
+- need to work out how the speed and amount works in poseidon
+- poseidon's other units doesn't work at all
+- how does poseidon speed and amount work out
+ - timer function
+
+# 20231220
+- Poseidon: the accel doesn't do shit, not accel whatsoever
+    - then what is it actually controlling the speed
+    - checked there's no built-in timer except for camera setup
+- what the fuck is wrong with the speed setting in my code why it keeps constant no matter what's changed
+- 20231220.py:
+    - add countdown_timer function but only works before changing mode
+        - stop -> stop immediately and close connection
+        - pause/ resume 
+            -> the program will exit after selection and user input without causing errors, pump will NOT stop
+            -> maybe something with threading or im just overthinking
+            - NEED TO ADD SOMETHING TO STOP IT FROM RUNNING FOREVER (Ctrl+C won't work)
+        - continue -> pump stops after time's up
+    - rewrite pause_resume_pump function for better iterarcy
+
+# 20231229
+- Poseidon: 
+    - tested dx = 90mm, speed = 50 mm/s or 90 mm/s, the actual speed is the same even tweak around the accel won't work
+    - maybe their base maths was wrong
+- 20231220.py
+    - same shit
+
+# 20231230
+- look up grbl and see how to give arduino cmd directly
+- maybe add timer into the arduino, but sync to the user timer input from the terminal, or set it as one of the cmd???
+- need to test the motor with and without resistance, and add pressure build-up safe lock so we don't get a blood bath
+
+# 20240105
+- remove redundant lines specifically with lock
+- changing microstepping value surprisingly doesn't change the speed
+- tried grbl, no use
