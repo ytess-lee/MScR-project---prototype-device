@@ -6,4 +6,6 @@ Computer Numeric Control (CNC) shield were assembled with stepper motor drivers,
 - The syringe pump was assemble using parts already made in the lab (provided by a previous master’s student, Minyeoung Kweon)
 
 The assembly of the prototype system:
+
 ![image](https://github.com/ytess-lee/MScR-project---prototype-device/assets/148589442/c2082e4e-de02-4a11-b286-026fb9fa149a)
+![image](https://github.com/ytess-lee/MScR-project---prototype-device/assets/148589442/596cea52-dbcf-40f2-ae72-b3e541bceb59)
